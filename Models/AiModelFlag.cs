@@ -9,7 +9,8 @@ namespace llama.cpp_models_preset_manager.Models
     public class AiModelFlag
     {
         public int Id { get; set; }
-        public AiModel AIModel { get; set; }
+        public AiModel AiModel { get; set; }
+        public int AiModelId { get; set; }
         public string Flag { get; set; }
         public string? FlagValue { get; set; }
     }

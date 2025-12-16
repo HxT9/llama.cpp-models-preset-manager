@@ -1,3 +1,5 @@
+using llama.cpp_models_preset_manager.Helpers;
+
 namespace llama.cpp_models_preset_manager
 {
     internal static class Program
@@ -8,6 +10,8 @@ namespace llama.cpp_models_preset_manager
         [STAThread]
         static void Main()
         {
+            DatabaseManager.init();
+
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();

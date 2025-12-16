@@ -28,7 +28,8 @@ namespace llama.cpp_models_preset_manager
 
             modelBuilder.Entity<AiModel>()
                 .HasMany(m => m.Flags)
-                .WithOne(f => f.AIModel)
+                .WithOne(f => f.AiModel)
+                .HasForeignKey(f => f.AiModelId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<AiModel>()

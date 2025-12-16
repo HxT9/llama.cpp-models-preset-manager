@@ -58,7 +58,7 @@ namespace llama.cpp_models_preset_manager.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    AIModelId = table.Column<int>(type: "INTEGER", nullable: false),
+                    AiModelId = table.Column<int>(type: "INTEGER", nullable: false),
                     Flag = table.Column<string>(type: "TEXT", nullable: false),
                     FlagValue = table.Column<string>(type: "TEXT", nullable: true)
                 },
@@ -66,8 +66,8 @@ namespace llama.cpp_models_preset_manager.Migrations
                 {
                     table.PrimaryKey("PK_AIModelFlag", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AIModelFlag_AIModel_AIModelId",
-                        column: x => x.AIModelId,
+                        name: "FK_AIModelFlag_AIModel_AiModelId",
+                        column: x => x.AiModelId,
                         principalTable: "AIModel",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -80,9 +80,9 @@ namespace llama.cpp_models_preset_manager.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AIModelFlag_AIModelId",
+                name: "IX_AIModelFlag_AiModelId",
                 table: "AIModelFlag",
-                column: "AIModelId");
+                column: "AiModelId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Flag_Name",

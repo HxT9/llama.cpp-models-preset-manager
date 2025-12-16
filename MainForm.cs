@@ -9,73 +9,155 @@ namespace llama.cpp_models_preset_manager
         BindingList<AiModelDTO> aiModelBinding;
         BindingList<AiModelFlagDTO> aiModelFlagBinding;
 
+        ContextMenuStrip contextMenuStripAiModel;
+        ContextMenuStrip contextMenuStripAiModelFlag;
+
         public MainForm()
         {
             InitializeComponent();
-            DatabaseManager.init();
+
+            Load += MainForm_Load;
         }
 
-        private void MainForm_Load(object sender, EventArgs e)
+        private void MainForm_Load(object? sender, EventArgs e)
         {
             ThemeHelper.ApplyTheme(this);
 
-            initAiModelGrid();
-            initAiModelFlagGrid();
+            InitAiModelGrid();
+            InitAiModelFlagGrid();
         }
 
-        private void initAiModelGrid()
+        private void InitAiModelGrid()
         {
             dataGridViewAiModel.MultiSelect = false;
+            dataGridViewAiModel.DataBindingComplete += DataGridViewAiModel_DataBindingComplete;
             dataGridViewAiModel.SelectionChanged += DataGridViewAiModel_SelectionChanged;
             dataGridViewAiModel.Resize += DataGridViewAiModel_Resize;
             dataGridViewAiModel.CellClick += DataGridViewAiModel_CellClick;
-            dataGridViewAiModel.RowValidated += DataGridViewAiModel_RowValidated;
+            dataGridViewAiModel.CellMouseDown += DataGridViewAiModel_CellMouseDown;
+            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_CellValueChanged;
+            dataGridViewAiModel.CurrentCellDirtyStateChanged += DataGridViewAiModel_CurrentCellDirtyStateChanged;
 
-            using (var contextMenu = new ContextMenuStrip())
             {
+                contextMenuStripAiModel = new ContextMenuStrip();
                 var deleteItem = new ToolStripMenuItem("Delete Selected Row");
-                deleteItem.Click += (s, e) => DatabaseService.DeleteAiModel((AiModelDTO)dataGridViewAiModel.CurrentRow.DataBoundItem);
-                dataGridViewAiModel.ContextMenuStrip = contextMenu;
+                deleteItem.Click += ContextAiModelDelete;
+                contextMenuStripAiModel.Items.Add(deleteItem);
+                dataGridViewAiModel.ContextMenuStrip = contextMenuStripAiModel;
             }
 
             LoadAiModels();
         }
 
+        private void DataGridViewAiModel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
+        {
+            if (aiModelBinding.Count > 0)
+            {
+                LoadAiModelFlags(aiModelBinding[0]);
+            }
+        }
+
         private void DataGridViewAiModel_SelectionChanged(object? sender, EventArgs e)
         {
-            AiModelDTO? m = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
-            if (m != null)
+            if (dataGridViewAiModel.CurrentRow != null)
             {
-                LoadAiModelFlags(m);
+                AiModelDTO? m = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
+                if (m != null)
+                {
+                    LoadAiModelFlags(m);
+                    return;
+                }
             }
+            LoadAiModelFlags(null);
         }
 
         private void DataGridViewAiModel_Resize(object? sender, EventArgs e)
         {
-            resizeAiModelColumns();
+            ResizeAiModelColumns();
         }
 
         private void DataGridViewAiModel_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return;
+
             if (dataGridViewAiModel.Columns[e.ColumnIndex].Name == "Browse")
             {
 
             }
         }
 
-        private void DataGridViewAiModel_RowValidated(object? sender, DataGridViewCellEventArgs e)
+        private void DataGridViewAiModel_CellMouseDown(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            AiModelDTO? m = dataGridViewAiModel.Rows[e.RowIndex].DataBoundItem as AiModelDTO;
-            if (m != null) 
-                DatabaseService.SaveAiModel(m);
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+            {
+                dataGridViewAiModel.ClearSelection();
+                dataGridViewAiModel.Rows[e.RowIndex].Selected = true;
+                dataGridViewAiModel.CurrentCell = dataGridViewAiModel.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            }
         }
 
-        private void LoadAiModels()
+        private void DataGridViewAiModel_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
         {
-            dataGridViewAiModel.AutoGenerateColumns = false;
+            if (e.RowIndex < 0) return;
 
-            aiModelBinding = new BindingList<AiModelDTO>(DatabaseService.GetAiModels());
+            if (dataGridViewAiModel.Rows[e.RowIndex].IsNewRow) return;
+
+            AiModelDTO? m = dataGridViewAiModel.Rows[e.RowIndex].DataBoundItem as AiModelDTO;
+            if (m != null)
+                try
+                {
+                    ServiceModel.Instance.SaveAiModel(m);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+        }
+
+        private void ContextAiModelDelete(object? sender, EventArgs e)
+        {
+            if (dataGridViewAiModel.CurrentRow != null)
+            {
+                var item = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
+                if (item == null) return;
+                try
+                {
+                    ServiceModel.Instance.DeleteAiModel(item);
+                    aiModelBinding.Remove(item);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+
+        private void DataGridViewAiModel_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
+        {
+            if (dataGridViewAiModel.IsCurrentCellDirty)
+                dataGridViewAiModel.CommitEdit(DataGridViewDataErrorContexts.Commit);
+        }
+
+        private void LoadAiModels(int selectedRow = 0)
+        {
+            dataGridViewAiModel.SuspendLayout();
+
+            dataGridViewAiModel.AutoGenerateColumns = false;
+            dataGridViewAiModel.Columns.Clear();
+
+            try
+            {
+                aiModelBinding = new BindingList<AiModelDTO>(ServiceModel.Instance.GetAiModels());
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+                aiModelBinding = new BindingList<AiModelDTO>();
+            }
+
+            dataGridViewAiModel.CellValueChanged -= DataGridViewAiModel_CellValueChanged;
             dataGridViewAiModel.DataSource = aiModelBinding;
+            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_CellValueChanged;
 
             dataGridViewAiModel.Columns.Add(new DataGridViewTextBoxColumn
             {
@@ -101,37 +183,53 @@ namespace llama.cpp_models_preset_manager
             };
             dataGridViewAiModel.Columns.Add(browseColumn);
 
-            resizeAiModelColumns();
+            ResizeAiModelColumns();
+
+            dataGridViewAiModel.ResumeLayout(true);
         }
 
-        private void resizeAiModelColumns()
+        private void ResizeAiModelColumns()
         {
-            dataGridViewAiModel.Columns["Name"].Width = dataGridViewAiModel.Width * 4 / 10;
-            dataGridViewAiModel.Columns["Path"].Width = dataGridViewAiModel.Width * 5 / 10;
-            dataGridViewAiModel.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModel.Width * 1 / 10);
+            try
+            {
+                dataGridViewAiModel.Columns["Name"].Width = dataGridViewAiModel.ClientSize.Width * 4 / 10;
+                dataGridViewAiModel.Columns["Path"].Width = dataGridViewAiModel.ClientSize.Width * 5 / 10;
+                dataGridViewAiModel.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModel.ClientSize.Width * 1 / 10);
+            }
+            catch (Exception ex) {
+                //MessageBox.Show(ex.Message);
+            }
         }
 
-        private void initAiModelFlagGrid()
+        private void InitAiModelFlagGrid()
         {
             dataGridViewAiModelFlag.MultiSelect = false;
             dataGridViewAiModelFlag.Resize += DataGridViewAiModelFlag_Resize;
             dataGridViewAiModelFlag.CellClick += DataGridViewAiModelFlag_CellClick;
+            dataGridViewAiModelFlag.CellMouseDown += DataGridViewAiModelFlag_CellMouseDown;
+            dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_CellValueChanged;
+            dataGridViewAiModelFlag.CurrentCellDirtyStateChanged += DataGridViewAiModelFlag_CurrentCellDirtyStateChanged;
 
-            using (var contextMenu = new ContextMenuStrip())
             {
+                contextMenuStripAiModelFlag = new ContextMenuStrip();
                 var deleteItem = new ToolStripMenuItem("Delete Selected Row");
-                deleteItem.Click += (s, e) => DatabaseService.DeleteAiModelFlag((AiModelFlagDTO)dataGridViewAiModelFlag.CurrentRow.DataBoundItem);
-                dataGridViewAiModelFlag.ContextMenuStrip = contextMenu;
+                deleteItem.Click += ContextAiModelFlagDelete;
+                contextMenuStripAiModelFlag.Items.Add(deleteItem);
+                dataGridViewAiModelFlag.ContextMenuStrip = contextMenuStripAiModelFlag;
             }
+
+            LoadAiModelFlags(null);
         }
 
         private void DataGridViewAiModelFlag_Resize(object? sender, EventArgs e)
         {
-            resizeAiModelFlagColumns();
+            ResizeAiModelFlagColumns();
         }
 
         private void DataGridViewAiModelFlag_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return;
+
             if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "FlagDropDown")
             {
 
@@ -141,12 +239,90 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void LoadAiModelFlags(AiModelDTO m)
+        private void DataGridViewAiModelFlag_CellMouseDown(object? sender, DataGridViewCellMouseEventArgs e)
         {
-            dataGridViewAiModelFlag.AutoGenerateColumns = false;
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+            {
+                dataGridViewAiModelFlag.ClearSelection();
+                dataGridViewAiModelFlag.Rows[e.RowIndex].Selected = true;
+                dataGridViewAiModelFlag.CurrentCell = dataGridViewAiModelFlag.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            }
+        }
 
-            aiModelFlagBinding = new BindingList<AiModelFlagDTO>(DatabaseService.GetAiModelFlags(m));
+        private void DataGridViewAiModelFlag_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            if (dataGridViewAiModelFlag.Rows[e.RowIndex].IsNewRow) return;
+
+            AiModelFlagDTO? f = dataGridViewAiModelFlag.Rows[e.RowIndex].DataBoundItem as AiModelFlagDTO;
+            if (f != null && dataGridViewAiModel.CurrentRow != null)
+            {
+                AiModelDTO? m = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
+                if (m != null)
+                {
+                    f.AiModelId = m.Id;
+                    try
+                    {
+                        ServiceModel.Instance.SaveAiModelFlag(f);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }                   
+                }
+            }
+        }
+
+        private void ContextAiModelFlagDelete(object? sender, EventArgs e)
+        {
+            if (dataGridViewAiModelFlag.CurrentRow != null)
+            {
+                var item = dataGridViewAiModelFlag.CurrentRow.DataBoundItem as AiModelFlagDTO;
+                if (item == null) return;
+                try
+                {
+                    ServiceModel.Instance.DeleteAiModelFlag(item);
+                    aiModelFlagBinding.Remove(item);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+
+        private void DataGridViewAiModelFlag_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
+        {
+            if (dataGridViewAiModelFlag.IsCurrentCellDirty)
+                dataGridViewAiModelFlag.CommitEdit(DataGridViewDataErrorContexts.Commit);
+        }
+
+        private void LoadAiModelFlags(AiModelDTO? m)
+        {
+            dataGridViewAiModelFlag.SuspendLayout();
+
+            dataGridViewAiModelFlag.AutoGenerateColumns = false;
+            dataGridViewAiModelFlag.Columns.Clear();
+
+            dataGridViewAiModelFlag.AllowUserToAddRows = false;
+            if (m != null)
+                try
+                {
+                    dataGridViewAiModelFlag.AllowUserToAddRows = true;
+                    aiModelFlagBinding = new BindingList<AiModelFlagDTO>(ServiceModel.Instance.GetAiModelFlags(m));
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(e.Message);
+                    aiModelFlagBinding = new BindingList<AiModelFlagDTO>();
+                }
+            else
+                aiModelFlagBinding = new BindingList<AiModelFlagDTO>();
+
+            //dataGridViewAiModelFlag.CellValueChanged -= DataGridViewAiModelFlag_CellValueChanged;
             dataGridViewAiModelFlag.DataSource = aiModelFlagBinding;
+            //dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_CellValueChanged;
 
             dataGridViewAiModelFlag.Columns.Add(new DataGridViewTextBoxColumn()
             {
@@ -182,15 +358,23 @@ namespace llama.cpp_models_preset_manager
             };
             dataGridViewAiModelFlag.Columns.Add(browseColumn);
 
-            resizeAiModelFlagColumns();
+            ResizeAiModelFlagColumns();
+            
+            dataGridViewAiModelFlag.ResumeLayout(true);
         }
 
-        private void resizeAiModelFlagColumns()
+        private void ResizeAiModelFlagColumns()
         {
-            dataGridViewAiModel.Columns["Flag"].Width = dataGridViewAiModel.Width * 4 / 10;
-            dataGridViewAiModel.Columns["FlagDropDown"].Width = Math.Min(30, dataGridViewAiModel.Width * 1 / 10);
-            dataGridViewAiModel.Columns["FlagValue"].Width = dataGridViewAiModel.Width * 4 / 10;
-            dataGridViewAiModel.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModel.Width * 1 / 10);
+            try
+            {
+                dataGridViewAiModelFlag.Columns["Flag"].Width = dataGridViewAiModelFlag.ClientSize.Width * 4 / 10;
+                dataGridViewAiModelFlag.Columns["FlagDropDown"].Width = Math.Min(30, dataGridViewAiModelFlag.ClientSize.Width * 1 / 10);
+                dataGridViewAiModelFlag.Columns["FlagValue"].Width = dataGridViewAiModelFlag.ClientSize.Width * 4 / 10;
+                dataGridViewAiModelFlag.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModelFlag.ClientSize.Width * 1 / 10);
+            }
+            catch (Exception ex) { 
+                //MessageBox.Show(ex.Message); 
+            }
         }
     }
 }

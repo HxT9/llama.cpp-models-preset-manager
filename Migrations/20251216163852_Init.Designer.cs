@@ -10,7 +10,7 @@ using llama.cpp_models_preset_manager;
 namespace llama.cpp_models_preset_manager.Migrations
 {
     [DbContext(typeof(DbContext))]
-    [Migration("20251216133113_Init")]
+    [Migration("20251216163852_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -47,7 +47,7 @@ namespace llama.cpp_models_preset_manager.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("AIModelId")
+                    b.Property<int>("AiModelId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Flag")
@@ -59,7 +59,7 @@ namespace llama.cpp_models_preset_manager.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AIModelId");
+                    b.HasIndex("AiModelId");
 
                     b.ToTable("AIModelFlag");
                 });
@@ -109,13 +109,13 @@ namespace llama.cpp_models_preset_manager.Migrations
 
             modelBuilder.Entity("llama.cpp_models_preset_manager.Models.AiModelFlag", b =>
                 {
-                    b.HasOne("llama.cpp_models_preset_manager.Models.AiModel", "AIModel")
+                    b.HasOne("llama.cpp_models_preset_manager.Models.AiModel", "AiModel")
                         .WithMany("Flags")
-                        .HasForeignKey("AIModelId")
+                        .HasForeignKey("AiModelId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("AIModel");
+                    b.Navigation("AiModel");
                 });
 
             modelBuilder.Entity("llama.cpp_models_preset_manager.Models.AiModel", b =>

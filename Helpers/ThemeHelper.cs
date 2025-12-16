@@ -74,6 +74,7 @@ namespace llama.cpp_models_preset_manager.Helpers
             dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(240, 240, 240);
 
             dgv.RowHeadersVisible = false;
+            dgv.AllowUserToResizeRows = false;
             dgv.GridColor = Color.FromArgb(207, 216, 220);
 
             foreach (DataGridViewColumn col in dgv.Columns)

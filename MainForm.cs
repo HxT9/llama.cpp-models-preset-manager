@@ -1,4 +1,4 @@
-using llama.cpp_models_preset_manager.DTOs;
+ï»¿using llama.cpp_models_preset_manager.DTOs;
 using llama.cpp_models_preset_manager.Helpers;
 using System.ComponentModel;
 
@@ -25,6 +25,7 @@ namespace llama.cpp_models_preset_manager
 
             InitAiModelGrid();
             InitAiModelFlagGrid();
+            LoadAiModels();
         }
 
         private void InitAiModelGrid()
@@ -35,8 +36,7 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModel.Resize += DataGridViewAiModel_Resize;
             dataGridViewAiModel.CellClick += DataGridViewAiModel_CellClick;
             dataGridViewAiModel.CellMouseDown += DataGridViewAiModel_CellMouseDown;
-            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_CellValueChanged;
-            dataGridViewAiModel.CurrentCellDirtyStateChanged += DataGridViewAiModel_CurrentCellDirtyStateChanged;
+            dataGridViewAiModel.RowValidated += DataGridViewAiModel_RowValidated;
 
             {
                 contextMenuStripAiModel = new ContextMenuStrip();
@@ -45,8 +45,6 @@ namespace llama.cpp_models_preset_manager
                 contextMenuStripAiModel.Items.Add(deleteItem);
                 dataGridViewAiModel.ContextMenuStrip = contextMenuStripAiModel;
             }
-
-            LoadAiModels();
         }
 
         private void DataGridViewAiModel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
@@ -96,21 +94,35 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void DataGridViewAiModel_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        private void DataGridViewAiModel_RowValidated(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
-
             if (dataGridViewAiModel.Rows[e.RowIndex].IsNewRow) return;
 
             AiModelDTO? m = dataGridViewAiModel.Rows[e.RowIndex].DataBoundItem as AiModelDTO;
             if (m != null)
                 try
                 {
+                    dataGridViewAiModel.Rows[e.RowIndex].Cells["Name"].ErrorText = null;
+                    if (string.IsNullOrWhiteSpace(m.Name))
+                    {
+                        dataGridViewAiModel.Rows[e.RowIndex].Cells["Name"].ErrorText = "Missing value";
+                        return;
+                    }
+
+                    dataGridViewAiModel.Rows[e.RowIndex].Cells["Path"].ErrorText = null;
+                    if (string.IsNullOrWhiteSpace(m.Path))
+                    {
+                        dataGridViewAiModel.Rows[e.RowIndex].Cells["Path"].ErrorText = "Missing value";
+                        return;
+                    }
+
                     ServiceModel.Instance.SaveAiModel(m);
+                    dataGridViewAiModelFlag.AllowUserToAddRows = true;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    MessageBox.Show(ex.Message + "\n" + ex.InnerException);
                 }
         }
 
@@ -132,12 +144,6 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void DataGridViewAiModel_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
-        {
-            if (dataGridViewAiModel.IsCurrentCellDirty)
-                dataGridViewAiModel.CommitEdit(DataGridViewDataErrorContexts.Commit);
-        }
-
         private void LoadAiModels(int selectedRow = 0)
         {
             dataGridViewAiModel.SuspendLayout();
@@ -155,9 +161,9 @@ namespace llama.cpp_models_preset_manager
                 aiModelBinding = new BindingList<AiModelDTO>();
             }
 
-            dataGridViewAiModel.CellValueChanged -= DataGridViewAiModel_CellValueChanged;
+            dataGridViewAiModel.CellValueChanged -= DataGridViewAiModel_RowValidated;
             dataGridViewAiModel.DataSource = aiModelBinding;
-            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_CellValueChanged;
+            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_RowValidated;
 
             dataGridViewAiModel.Columns.Add(new DataGridViewTextBoxColumn
             {
@@ -177,7 +183,7 @@ namespace llama.cpp_models_preset_manager
             {
                 Name = "Browse",
                 HeaderText = "",
-                Text = "…",
+                Text = "â€¦",
                 UseColumnTextForButtonValue = true,
                 Width = 30
             };
@@ -186,6 +192,12 @@ namespace llama.cpp_models_preset_manager
             ResizeAiModelColumns();
 
             dataGridViewAiModel.ResumeLayout(true);
+
+            if (dataGridViewAiModel.Rows.Count > 0)
+            {
+                if (selectedRow > dataGridViewAiModel.Rows.Count - 1) selectedRow = 0;
+                LoadAiModelFlags(dataGridViewAiModel.Rows[selectedRow].DataBoundItem as AiModelDTO);
+            }
         }
 
         private void ResizeAiModelColumns()
@@ -196,7 +208,8 @@ namespace llama.cpp_models_preset_manager
                 dataGridViewAiModel.Columns["Path"].Width = dataGridViewAiModel.ClientSize.Width * 5 / 10;
                 dataGridViewAiModel.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModel.ClientSize.Width * 1 / 10);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 //MessageBox.Show(ex.Message);
             }
         }
@@ -207,8 +220,8 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModelFlag.Resize += DataGridViewAiModelFlag_Resize;
             dataGridViewAiModelFlag.CellClick += DataGridViewAiModelFlag_CellClick;
             dataGridViewAiModelFlag.CellMouseDown += DataGridViewAiModelFlag_CellMouseDown;
+            dataGridViewAiModelFlag.RowValidated += DataGridViewAiModelFlag_RowValidated;
             dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_CellValueChanged;
-            dataGridViewAiModelFlag.CurrentCellDirtyStateChanged += DataGridViewAiModelFlag_CurrentCellDirtyStateChanged;
 
             {
                 contextMenuStripAiModelFlag = new ContextMenuStrip();
@@ -233,7 +246,8 @@ namespace llama.cpp_models_preset_manager
             if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "FlagDropDown")
             {
 
-            }else if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "Browse")
+            }
+            else if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "Browse")
             {
 
             }
@@ -249,7 +263,7 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void DataGridViewAiModelFlag_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        private void DataGridViewAiModelFlag_RowValidated(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
@@ -259,19 +273,28 @@ namespace llama.cpp_models_preset_manager
             if (f != null && dataGridViewAiModel.CurrentRow != null)
             {
                 AiModelDTO? m = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
-                if (m != null)
+                if (m != null && m.Id > 0)
                 {
-                    f.AiModelId = m.Id;
-                    try
-                    {
-                        ServiceModel.Instance.SaveAiModelFlag(f);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(ex.Message);
-                    }                   
+                    if (f.AiModelId == 0)
+                        f.AiModelId = m.Id;
+
+                    if (f.AiModelId == m.Id)
+                        try
+                        {
+                            ServiceModel.Instance.SaveAiModelFlag(f);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(ex.Message);
+                        }
                 }
             }
+        }
+
+        private void DataGridViewAiModelFlag_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            dataGridViewAiModelFlag.Rows[e.RowIndex].Tag = true;
         }
 
         private void ContextAiModelFlagDelete(object? sender, EventArgs e)
@@ -292,12 +315,6 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void DataGridViewAiModelFlag_CurrentCellDirtyStateChanged(object? sender, EventArgs e)
-        {
-            if (dataGridViewAiModelFlag.IsCurrentCellDirty)
-                dataGridViewAiModelFlag.CommitEdit(DataGridViewDataErrorContexts.Commit);
-        }
-
         private void LoadAiModelFlags(AiModelDTO? m)
         {
             dataGridViewAiModelFlag.SuspendLayout();
@@ -306,7 +323,7 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModelFlag.Columns.Clear();
 
             dataGridViewAiModelFlag.AllowUserToAddRows = false;
-            if (m != null)
+            if (m != null && m.Id > 0)
                 try
                 {
                     dataGridViewAiModelFlag.AllowUserToAddRows = true;
@@ -320,9 +337,9 @@ namespace llama.cpp_models_preset_manager
             else
                 aiModelFlagBinding = new BindingList<AiModelFlagDTO>();
 
-            //dataGridViewAiModelFlag.CellValueChanged -= DataGridViewAiModelFlag_CellValueChanged;
+            dataGridViewAiModelFlag.CellValueChanged -= DataGridViewAiModelFlag_RowValidated;
             dataGridViewAiModelFlag.DataSource = aiModelFlagBinding;
-            //dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_CellValueChanged;
+            dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_RowValidated;
 
             dataGridViewAiModelFlag.Columns.Add(new DataGridViewTextBoxColumn()
             {
@@ -335,7 +352,7 @@ namespace llama.cpp_models_preset_manager
             {
                 Name = "FlagDropDown",
                 HeaderText = "",
-                Text = "•",
+                Text = "â€¢",
                 UseColumnTextForButtonValue = true,
                 Width = 20
             };
@@ -352,14 +369,14 @@ namespace llama.cpp_models_preset_manager
             {
                 Name = "Browse",
                 HeaderText = "",
-                Text = "…",
+                Text = "â€¦",
                 UseColumnTextForButtonValue = true,
                 Width = 30
             };
             dataGridViewAiModelFlag.Columns.Add(browseColumn);
 
             ResizeAiModelFlagColumns();
-            
+
             dataGridViewAiModelFlag.ResumeLayout(true);
         }
 
@@ -372,8 +389,18 @@ namespace llama.cpp_models_preset_manager
                 dataGridViewAiModelFlag.Columns["FlagValue"].Width = dataGridViewAiModelFlag.ClientSize.Width * 4 / 10;
                 dataGridViewAiModelFlag.Columns["Browse"].Width = Math.Min(30, dataGridViewAiModelFlag.ClientSize.Width * 1 / 10);
             }
-            catch (Exception ex) { 
+            catch (Exception ex)
+            {
                 //MessageBox.Show(ex.Message); 
+            }
+        }
+
+        private void resetModelsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Delete all models configuration?", "Warning", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                ServiceModel.Instance.DeleteAllAiModel();
+                aiModelBinding.Clear();
             }
         }
     }

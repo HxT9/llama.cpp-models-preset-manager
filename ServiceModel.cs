@@ -101,6 +101,12 @@ namespace llama.cpp_models_preset_manager
                 DatabaseManager.Delete(entity);
         }
 
+        public void DeleteAllAiModel()
+        {
+            DatabaseManager.Instance.DbContext.AIModel.RemoveRange(DatabaseManager.Instance.DbContext.AIModel);
+            DatabaseManager.Instance.DbContext.SaveChanges();
+        }
+
         public void DeleteFlag(FlagDTO dto)
         {
             var entity = DatabaseManager.Instance.DbContext.Flag.FirstOrDefault(e => e.Id == dto.Id);

@@ -117,8 +117,16 @@ namespace llama.cpp_models_preset_manager
                         return;
                     }
 
-                    ServiceModel.Instance.SaveAiModel(m);
-                    dataGridViewAiModelFlag.AllowUserToAddRows = true;
+                    try
+                    {
+                        ServiceModel.Instance.SaveAiModel(m);
+                        dataGridViewAiModelFlag.AllowUserToAddRows = true;
+                    }catch(Exception ex)
+                    {
+                        MessageBox.Show(ex.Message + "\n" + ex.InnerException);
+                        ServiceModel.Instance.UndoChanges();
+                        aiModelBinding.Remove(m);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -221,7 +229,6 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModelFlag.CellClick += DataGridViewAiModelFlag_CellClick;
             dataGridViewAiModelFlag.CellMouseDown += DataGridViewAiModelFlag_CellMouseDown;
             dataGridViewAiModelFlag.RowValidated += DataGridViewAiModelFlag_RowValidated;
-            dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_CellValueChanged;
 
             {
                 contextMenuStripAiModelFlag = new ContextMenuStrip();
@@ -286,15 +293,11 @@ namespace llama.cpp_models_preset_manager
                         catch (Exception ex)
                         {
                             MessageBox.Show(ex.Message);
+                            ServiceModel.Instance.UndoChanges();
+                            aiModelFlagBinding.Remove(f);
                         }
                 }
             }
-        }
-
-        private void DataGridViewAiModelFlag_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            dataGridViewAiModelFlag.Rows[e.RowIndex].Tag = true;
         }
 
         private void ContextAiModelFlagDelete(object? sender, EventArgs e)
@@ -402,6 +405,29 @@ namespace llama.cpp_models_preset_manager
                 ServiceModel.Instance.DeleteAllAiModel();
                 aiModelBinding.Clear();
             }
+        }
+
+        private void lookupFromFolderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string? folder = null;
+            using (var dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = "Select Folder";
+                dialog.UseDescriptionForTitle = true;
+                dialog.SelectedPath = ServiceModel.Instance.GetKV("GGUFScanDirectory") ?? Environment.CurrentDirectory;
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    folder = dialog.SelectedPath;
+                    ServiceModel.Instance.SaveKV("GGUFScanDirectory", folder);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(folder))
+                return;
+
+            List<AiModelDTO> models = ModelScanner.ScanAndAddModels(folder);
+            models.ForEach(m => aiModelBinding.Add(m));
         }
     }
 }

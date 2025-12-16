@@ -47,13 +47,10 @@ namespace llama.cpp_models_preset_manager.Helpers
         }
 
         /*
-         * Insert or update an entity that has Id key.
-         * Return true if inserted, false otherwise.
+         * Insert or update an entity that has Id as key.
          */
         public static bool Upsert<T>(T entity) where T : class
         {
-            bool inserted = false;
-
             var entry = Instance.DbContext.Entry(entity);
             
             var idProperty = entity.GetType().GetProperty("Id");
@@ -63,7 +60,6 @@ namespace llama.cpp_models_preset_manager.Helpers
                 if (id == 0)
                 {
                     Instance.DbContext.Set<T>().Add(entity);
-                    inserted = true;
                 }
                 else
                 {
@@ -95,7 +91,8 @@ namespace llama.cpp_models_preset_manager.Helpers
             }
 
             Instance.DbContext.SaveChanges();
-            return inserted;
+
+            return true;
         }
 
         public static void Delete<T>(T entity) where T : class
@@ -106,6 +103,28 @@ namespace llama.cpp_models_preset_manager.Helpers
             }
             Instance.DbContext.Set<T>().Remove(entity);
             Instance.DbContext.SaveChanges();
+        }
+
+        //Undo pending changes
+        public static void UndoChanges()
+        {
+            var changedEntries = Instance.DbContext.ChangeTracker.Entries().Where(e => e.State != EntityState.Unchanged).ToList();
+            foreach (var entry in changedEntries)
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Modified:
+                        entry.CurrentValues.SetValues(entry.OriginalValues);
+                        entry.State = EntityState.Unchanged;
+                        break;
+                    case EntityState.Added:
+                        entry.State = EntityState.Detached;
+                        break;
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Unchanged;
+                        break;
+                }
+            }
         }
     }
 }

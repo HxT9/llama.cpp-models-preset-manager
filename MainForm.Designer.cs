@@ -102,6 +102,7 @@
             lookupFromFolderToolStripMenuItem.Name = "lookupFromFolderToolStripMenuItem";
             lookupFromFolderToolStripMenuItem.Size = new Size(180, 22);
             lookupFromFolderToolStripMenuItem.Text = "Lookup from folder";
+            lookupFromFolderToolStripMenuItem.Click += lookupFromFolderToolStripMenuItem_Click;
             // 
             // resetModelsToolStripMenuItem
             // 

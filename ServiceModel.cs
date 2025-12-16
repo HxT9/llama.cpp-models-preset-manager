@@ -44,6 +44,11 @@ namespace llama.cpp_models_preset_manager
             _mapper = mapperConfig.CreateMapper();
         }
 
+        public void UndoChanges()
+        {
+            DatabaseManager.UndoChanges();
+        }
+
         public List<AiModelDTO> GetAiModels()
         {
             return _mapper.Map<List<AiModelDTO>>(DatabaseManager.Instance.DbContext.AIModel.AsNoTracking().ToList());
@@ -62,6 +67,20 @@ namespace llama.cpp_models_preset_manager
                 .ToList();
 
             return _mapper.Map<List<AiModelFlagDTO>>(entities);
+        }
+
+        public string? GetKV(string key)
+        {
+            return DatabaseManager.Instance.DbContext.KVConfig.FirstOrDefault(kv => kv.Key == key)?.Value ?? null;
+        }
+
+        public void SaveKV(string key, string value)
+        {
+            if (DatabaseManager.Instance.DbContext.KVConfig.FirstOrDefault(kv => kv.Key == key) != null)
+                DatabaseManager.Instance.DbContext.KVConfig.First(kv => kv.Key == key).Value = value;
+            else
+                DatabaseManager.Instance.DbContext.KVConfig.Add(new KVConfig() { Key = key, Value = value });
+            DatabaseManager.Instance.DbContext.SaveChanges();
         }
 
         public void SaveAiModel(AiModelDTO dto)

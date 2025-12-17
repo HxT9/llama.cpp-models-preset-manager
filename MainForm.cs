@@ -35,12 +35,11 @@ namespace llama.cpp_models_preset_manager
         private void InitAiModelGrid()
         {
             dataGridViewAiModel.MultiSelect = false;
-            dataGridViewAiModel.SelectionChanged += DataGridViewAiModel_SelectionChanged;
+            dataGridViewAiModel.CurrentCellChanged += DataGridViewAiModel_CurrentCellChanged;
             dataGridViewAiModel.Resize += DataGridViewAiModel_Resize;
             dataGridViewAiModel.CellClick += DataGridViewAiModel_CellClick;
             dataGridViewAiModel.CellMouseDown += DataGridViewAiModel_CellMouseDown;
             dataGridViewAiModel.RowValidated += DataGridViewAiModel_RowValidated;
-            dataGridViewAiModel.KeyUp += DataGridViewAiModel_KeyUp;
 
             {
                 contextMenuStripAiModel = new ContextMenuStrip();
@@ -51,7 +50,7 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
-        private void DataGridViewAiModel_SelectionChanged(object? sender, EventArgs e)
+        private void DataGridViewAiModel_CurrentCellChanged(object? sender, EventArgs e)
         {
             if (dataGridViewAiModel.CurrentRow != null)
             {
@@ -148,19 +147,6 @@ namespace llama.cpp_models_preset_manager
                 {
                     MessageBox.Show(ex.Message + "\n" + ex.InnerException);
                 }
-        }
-
-        private void DataGridViewAiModel_KeyUp(object? sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Tab)
-            {
-                if (dataGridViewAiModel.CurrentCell != null)
-                {
-                    if (dataGridViewAiModel.CurrentCell.ColumnIndex == dataGridViewAiModel.Columns["Browse"].Index)
-                        dataGridViewAiModel.CurrentCell = dataGridViewAiModel.Rows[dataGridViewAiModel.CurrentCell.RowIndex].Cells["Name"];
-                    e.Handled = true;
-                }
-            }
         }
 
         private void ContextAiModelDelete(object? sender, EventArgs e)
@@ -376,10 +362,38 @@ namespace llama.cpp_models_preset_manager
             {
                 if (dataGridViewAiModelFlag.CurrentCell != null)
                 {
-                    if (dataGridViewAiModelFlag.CurrentCell.ColumnIndex == dataGridViewAiModelFlag.Columns["FlagDropDown"].Index)
-                        dataGridViewAiModelFlag.CurrentCell = dataGridViewAiModelFlag.Rows[dataGridViewAiModelFlag.CurrentCell.RowIndex].Cells["FlagValue"];
-                    if (dataGridViewAiModelFlag.CurrentCell.ColumnIndex == dataGridViewAiModelFlag.Columns["Browse"].Index)
-                        dataGridViewAiModelFlag.CurrentCell = dataGridViewAiModelFlag.Rows[dataGridViewAiModelFlag.CurrentCell.RowIndex].Cells["Flag"];
+                    int i = 0;
+                    DataGridViewCell nextCell = dataGridViewAiModelFlag.CurrentCell;
+
+                    int nextColumnIncrement = e.KeyData.HasFlag(Keys.Shift) ? -1 : 1;
+
+                    int nextCellIndex = 0;
+                    int nextRowIndex = 0;
+
+                    do
+                    {
+                        nextCellIndex = nextCell.ColumnIndex + nextColumnIncrement;
+                        nextRowIndex = nextCell.RowIndex;
+
+                        if (nextCellIndex < 0)
+                        {
+                            nextCellIndex = dataGridViewAiModelFlag.ColumnCount - 1;
+                            nextRowIndex--;
+                        }
+
+                        if (nextCellIndex >= dataGridViewAiModelFlag.ColumnCount)
+                        {
+                            nextCellIndex = 0;
+                            nextRowIndex++;
+                        }
+
+                        if (nextRowIndex >= 0 && nextRowIndex < dataGridViewAiModelFlag.RowCount)
+                            nextCell = dataGridViewAiModelFlag
+                                .Rows[nextRowIndex]
+                                .Cells[nextCellIndex];
+                    } while (nextRowIndex >= 0 && nextRowIndex < dataGridViewAiModelFlag.RowCount && nextCell.ReadOnly);
+
+                    dataGridViewAiModelFlag.CurrentCell = nextCell;
                     e.Handled = true;
                 }
             }
@@ -587,16 +601,33 @@ namespace llama.cpp_models_preset_manager
 
         private void exportModelspresetConfigToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (dataGridViewAiModelFlag.CurrentCell != null)
+            {
+                dataGridViewAiModelFlag.EndEdit();
+                DataGridViewAiModelFlag_RowValidated(null, new DataGridViewCellEventArgs(dataGridViewAiModelFlag.CurrentCell.ColumnIndex, dataGridViewAiModelFlag.CurrentCell.RowIndex));
+            }
+
             string? file = null;
             using (var dialog = new SaveFileDialog())
             {
+                string? initialFile = ServiceModel.Instance.GetKV("ConfigFile");
                 dialog.Filter = "Config file (*.ini)|*.ini|All files (*.*)|*.*";
-                dialog.InitialDirectory = ServiceModel.Instance.GetKV("ConfigFile") ?? Environment.CurrentDirectory;
+                if (initialFile != null && File.Exists(initialFile))
+                {
+                    var fi = new FileInfo(initialFile);
+                    dialog.InitialDirectory = fi.Directory?.FullName;
+                    dialog.FileName = fi.Name;
+                }
+                else
+                {
+                    dialog.InitialDirectory = Environment.CurrentDirectory;
+                }
+
 
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     file = dialog.FileName;
-                    ServiceModel.Instance.SaveKV("ConfigFile", new FileInfo(file).Directory?.FullName ?? "");
+                    ServiceModel.Instance.SaveKV("ConfigFile", file ?? "");
                 }
             }
 

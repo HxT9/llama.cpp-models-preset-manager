@@ -51,12 +51,18 @@ namespace llama.cpp_models_preset_manager
 
         public List<AiModelDTO> GetAiModels()
         {
-            return _mapper.Map<List<AiModelDTO>>(DatabaseManager.Instance.DbContext.AIModel.AsNoTracking().OrderBy(m => m.Name).ToList());
+            return _mapper.Map<List<AiModelDTO>>(DatabaseManager.Instance.DbContext.AIModel
+                .AsNoTracking()
+                .OrderBy(m => m.Name.ToUpper())
+                .ToList());
         }
 
         public List<FlagDTO> GetFlags()
         {
-            return _mapper.Map<List<FlagDTO>>(DatabaseManager.Instance.DbContext.Flag.AsNoTracking().OrderBy(f => f.Name).ToList());
+            return _mapper.Map<List<FlagDTO>>(DatabaseManager.Instance.DbContext.Flag
+                .AsNoTracking()
+                .OrderBy(f => f.Name.ToUpper())
+                .ToList());
         }
 
         public List<AiModelFlagDTO> GetAiModelFlags(AiModelDTO model)
@@ -64,7 +70,7 @@ namespace llama.cpp_models_preset_manager
             var entities = DatabaseManager.Instance.DbContext.AIModelFlag
                 .AsNoTracking()
                 .Where(f => f.AiModelId == model.Id)
-                .OrderBy(f => f.Flag)
+                .OrderBy(f => f.Flag.ToUpper())
                 .ToList();
 
             return _mapper.Map<List<AiModelFlagDTO>>(entities);

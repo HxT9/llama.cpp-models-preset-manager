@@ -24,6 +24,8 @@ namespace llama.cpp_models_preset_manager.Helpers
                         sw.Write(flag.Flag);
                         if (!string.IsNullOrEmpty(flag.FlagValue))
                             sw.Write(" = " + flag.FlagValue);
+                        else
+                            sw.Write(" = true");
                         sw.WriteLine();
                     }
                     sw.WriteLine();

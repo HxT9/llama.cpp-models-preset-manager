@@ -609,22 +609,35 @@ namespace llama.cpp_models_preset_manager
             {
                 string? initialFile = ServiceModel.Instance.GetKV("ConfigFile");
                 dialog.Filter = "Config file (*.ini)|*.ini|All files (*.*)|*.*";
-                if (initialFile != null && File.Exists(initialFile))
+                if (initialFile != null)
                 {
-                    var fi = new FileInfo(initialFile);
-                    dialog.InitialDirectory = fi.Directory?.FullName;
-                    dialog.FileName = fi.Name;
+                    if (File.Exists(initialFile))
+                    {
+                        var fi = new FileInfo(initialFile);
+                        dialog.InitialDirectory = fi.Directory?.FullName;
+                        dialog.FileName = fi.Name;
+                    }
+                    else
+                    {
+                        var dir = ServiceModel.Instance.GetKV("ConfigDirectory");
+                        if (Directory.Exists(dir))
+                            dialog.InitialDirectory = dir;
+                        else
+                            dialog.InitialDirectory = Environment.CurrentDirectory;
+                        dialog.FileName = "llama-server-config.ini";
+                    }
                 }
                 else
                 {
                     dialog.InitialDirectory = Environment.CurrentDirectory;
+                    dialog.FileName = "llama-server-config.ini";
                 }
-
 
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
                     file = dialog.FileName;
                     ServiceModel.Instance.SaveKV("ConfigFile", file ?? "");
+                    ServiceModel.Instance.SaveKV("ConfigDirectory", new FileInfo(file ?? "").Directory?.FullName ?? "");
                 }
             }
 

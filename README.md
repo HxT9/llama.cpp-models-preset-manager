@@ -24,7 +24,7 @@ https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#using-m
    - Or manually add rows in the left grid.
 2. **Editing Flags**:
    - Select a model on the left.
-   - in the right grid, add flags without '-' (e.g., Flag: `c`, Value: `4096`; or flag without empty value like `no-mmap`).
+   - in the right grid, add flags without '-' (e.g., Flag: `c`, Value: `4096`; or flag with empty value like `no-mmap`).
    - Use the `•` button to pick from saved common flags.
 3. **Managing Flags**:
    - `Actions -> Flag list` to open the global flag list (populated with used flags).

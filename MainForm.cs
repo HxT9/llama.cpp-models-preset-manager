@@ -1,5 +1,6 @@
 ﻿using llama.cpp_models_preset_manager.DTOs;
 using llama.cpp_models_preset_manager.Helpers;
+using llama.cpp_models_preset_manager.Models;
 using System.ComponentModel;
 
 namespace llama.cpp_models_preset_manager
@@ -11,6 +12,8 @@ namespace llama.cpp_models_preset_manager
 
         ContextMenuStrip contextMenuStripAiModel;
         ContextMenuStrip contextMenuStripAiModelFlag;
+
+        private ComboBox flagSelectorComboBox;
 
         public MainForm()
         {
@@ -31,7 +34,6 @@ namespace llama.cpp_models_preset_manager
         private void InitAiModelGrid()
         {
             dataGridViewAiModel.MultiSelect = false;
-            dataGridViewAiModel.DataBindingComplete += DataGridViewAiModel_DataBindingComplete;
             dataGridViewAiModel.SelectionChanged += DataGridViewAiModel_SelectionChanged;
             dataGridViewAiModel.Resize += DataGridViewAiModel_Resize;
             dataGridViewAiModel.CellClick += DataGridViewAiModel_CellClick;
@@ -44,14 +46,6 @@ namespace llama.cpp_models_preset_manager
                 deleteItem.Click += ContextAiModelDelete;
                 contextMenuStripAiModel.Items.Add(deleteItem);
                 dataGridViewAiModel.ContextMenuStrip = contextMenuStripAiModel;
-            }
-        }
-
-        private void DataGridViewAiModel_DataBindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
-        {
-            if (aiModelBinding.Count > 0)
-            {
-                LoadAiModelFlags(aiModelBinding[0]);
             }
         }
 
@@ -80,7 +74,26 @@ namespace llama.cpp_models_preset_manager
 
             if (dataGridViewAiModel.Columns[e.ColumnIndex].Name == "Browse")
             {
+                using (var dialog = new OpenFileDialog())
+                {
+                    dialog.Title = "Select GGUF";
+                    dialog.Filter = "GGUF files (*.gguf)|*.gguf";
+                    dialog.InitialDirectory = ServiceModel.Instance.GetKV("LastGGUFDirectory") ?? Environment.CurrentDirectory;
 
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        string filePath = dialog.FileName;
+
+                        dataGridViewAiModel.Rows[e.RowIndex].Cells["Path"].Value = filePath;
+
+                        if (string.IsNullOrWhiteSpace((string)dataGridViewAiModel.Rows[e.RowIndex].Cells["Name"].Value))
+                            dataGridViewAiModel.Rows[e.RowIndex].Cells["Name"].Value = ModelScanner.getNameFromGGUFPath(filePath);
+
+                        dataGridViewAiModel.NotifyCurrentCellDirty(true);
+
+                        ServiceModel.Instance.SaveKV("LastGGUFDirectory", new FileInfo(filePath).Directory?.FullName ?? "");
+                    }
+                }
             }
         }
 
@@ -169,9 +182,7 @@ namespace llama.cpp_models_preset_manager
                 aiModelBinding = new BindingList<AiModelDTO>();
             }
 
-            dataGridViewAiModel.CellValueChanged -= DataGridViewAiModel_RowValidated;
             dataGridViewAiModel.DataSource = aiModelBinding;
-            dataGridViewAiModel.CellValueChanged += DataGridViewAiModel_RowValidated;
 
             dataGridViewAiModel.Columns.Add(new DataGridViewTextBoxColumn
             {
@@ -200,12 +211,6 @@ namespace llama.cpp_models_preset_manager
             ResizeAiModelColumns();
 
             dataGridViewAiModel.ResumeLayout(true);
-
-            if (dataGridViewAiModel.Rows.Count > 0)
-            {
-                if (selectedRow > dataGridViewAiModel.Rows.Count - 1) selectedRow = 0;
-                LoadAiModelFlags(dataGridViewAiModel.Rows[selectedRow].DataBoundItem as AiModelDTO);
-            }
         }
 
         private void ResizeAiModelColumns()
@@ -234,7 +239,10 @@ namespace llama.cpp_models_preset_manager
                 contextMenuStripAiModelFlag = new ContextMenuStrip();
                 var deleteItem = new ToolStripMenuItem("Delete Selected Row");
                 deleteItem.Click += ContextAiModelFlagDelete;
+                var deleteAll = new ToolStripMenuItem("Delete All Flags");
+                deleteAll.Click += ContextAiModelFlagDeleteAll;
                 contextMenuStripAiModelFlag.Items.Add(deleteItem);
+                contextMenuStripAiModelFlag.Items.Add(deleteAll);
                 dataGridViewAiModelFlag.ContextMenuStrip = contextMenuStripAiModelFlag;
             }
 
@@ -252,11 +260,51 @@ namespace llama.cpp_models_preset_manager
 
             if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "FlagDropDown")
             {
+                flagSelectorComboBox.Visible = true;
+                flagSelectorComboBox.DataSource = ServiceModel.Instance.GetFlags();
+                flagSelectorComboBox.DisplayMember = "Name";
+                flagSelectorComboBox.ValueMember = "Name";
+                flagSelectorComboBox.Tag = e.RowIndex;
 
+                var cellRect = dataGridViewAiModelFlag.GetCellDisplayRectangle(dataGridViewAiModelFlag.Columns["Flag"].Index, e.RowIndex, true);
+
+                flagSelectorComboBox.SetBounds(
+                    cellRect.X,
+                    cellRect.Y,
+                    cellRect.Width,
+                    flagSelectorComboBox.Height
+                );
+
+                flagSelectorComboBox.DroppedDown = true;
             }
             else if (dataGridViewAiModelFlag.Columns[e.ColumnIndex].Name == "Browse")
             {
+                using (var dialog = new OpenFileDialog())
+                {
+                    dialog.Title = "Select File";
+                    dialog.Filter = "All files (*.*)|*.*";
 
+                    if (dataGridViewAiModel.CurrentRow != null)
+                    {
+                        string? path = (dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO)?.Path;
+                        dialog.InitialDirectory = new FileInfo(path).Directory?.FullName ?? "";
+                    }
+
+                    if (string.IsNullOrWhiteSpace(dialog.InitialDirectory))
+                        dialog.InitialDirectory = ServiceModel.Instance.GetKV("LastGGUFDirectory") ?? Environment.CurrentDirectory;
+
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        string filePath = dialog.FileName;
+
+                        var cell = dataGridViewAiModelFlag.Rows[e.RowIndex].Cells["FlagValue"];
+                        dataGridViewAiModelFlag.CurrentCell = cell;
+                        dataGridViewAiModelFlag.NotifyCurrentCellDirty(true);
+                        cell.Value = filePath;
+                        dataGridViewAiModelFlag.EndEdit(DataGridViewDataErrorContexts.Commit);
+                        dataGridViewAiModelFlag.NotifyCurrentCellDirty(false);
+                    }
+                }
             }
         }
 
@@ -273,7 +321,6 @@ namespace llama.cpp_models_preset_manager
         private void DataGridViewAiModelFlag_RowValidated(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
-
             if (dataGridViewAiModelFlag.Rows[e.RowIndex].IsNewRow) return;
 
             AiModelFlagDTO? f = dataGridViewAiModelFlag.Rows[e.RowIndex].DataBoundItem as AiModelFlagDTO;
@@ -282,20 +329,26 @@ namespace llama.cpp_models_preset_manager
                 AiModelDTO? m = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
                 if (m != null && m.Id > 0)
                 {
-                    if (f.AiModelId == 0)
+                    if (f.Id == 0)
                         f.AiModelId = m.Id;
 
-                    if (f.AiModelId == m.Id)
-                        try
-                        {
-                            ServiceModel.Instance.SaveAiModelFlag(f);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(ex.Message);
-                            ServiceModel.Instance.UndoChanges();
-                            aiModelFlagBinding.Remove(f);
-                        }
+                    dataGridViewAiModelFlag.Rows[e.RowIndex].Cells["Flag"].ErrorText = null;
+                    if (string.IsNullOrWhiteSpace(f.Flag))
+                    {
+                        dataGridViewAiModelFlag.Rows[e.RowIndex].Cells["Flag"].ErrorText = "Missing value";
+                        return;
+                    }
+
+                    try
+                    {
+                        ServiceModel.Instance.SaveAiModelFlag(f);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                        ServiceModel.Instance.UndoChanges();
+                        aiModelFlagBinding.Remove(f);
+                    }
                 }
             }
         }
@@ -310,6 +363,24 @@ namespace llama.cpp_models_preset_manager
                 {
                     ServiceModel.Instance.DeleteAiModelFlag(item);
                     aiModelFlagBinding.Remove(item);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+        }
+
+        private void ContextAiModelFlagDeleteAll(object? sender, EventArgs e)
+        {
+            if (dataGridViewAiModel.CurrentRow != null)
+            {
+                var item = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
+                if (item == null) return;
+                try
+                {
+                    ServiceModel.Instance.DeleteAllAiModelFlag(item);
+                    aiModelFlagBinding.Clear();
                 }
                 catch (Exception ex)
                 {
@@ -340,9 +411,7 @@ namespace llama.cpp_models_preset_manager
             else
                 aiModelFlagBinding = new BindingList<AiModelFlagDTO>();
 
-            dataGridViewAiModelFlag.CellValueChanged -= DataGridViewAiModelFlag_RowValidated;
             dataGridViewAiModelFlag.DataSource = aiModelFlagBinding;
-            dataGridViewAiModelFlag.CellValueChanged += DataGridViewAiModelFlag_RowValidated;
 
             dataGridViewAiModelFlag.Columns.Add(new DataGridViewTextBoxColumn()
             {
@@ -360,6 +429,15 @@ namespace llama.cpp_models_preset_manager
                 Width = 20
             };
             dataGridViewAiModelFlag.Columns.Add(flagDropDown);
+
+            flagSelectorComboBox = new ComboBox()
+            {
+                Visible = false,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            flagSelectorComboBox.SelectionChangeCommitted += FlagSelectorComboBox_SelectionChangeCommitted;
+            flagSelectorComboBox.DropDownClosed += (s, e) => { flagSelectorComboBox.Visible = false; };
+            dataGridViewAiModelFlag.Controls.Add(flagSelectorComboBox);
 
             dataGridViewAiModelFlag.Columns.Add(new DataGridViewTextBoxColumn()
             {
@@ -398,6 +476,33 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
+        private void FlagSelectorComboBox_SelectionChangeCommitted(object? sender, EventArgs e)
+        {
+            if (flagSelectorComboBox.SelectedItem != null && flagSelectorComboBox.Tag is int rowIndex)
+            {
+                flagSelectorComboBox.Visible = false;
+
+                var selectedFlag = flagSelectorComboBox.SelectedItem as FlagDTO;
+                if (selectedFlag == null) return;
+
+                if (dataGridViewAiModel.CurrentRow == null) return;
+                var model = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
+                if (model == null) return;
+
+                var flag = dataGridViewAiModelFlag.Rows[rowIndex].DataBoundItem as AiModelFlagDTO;
+                if (flag != null)
+                {
+                    flag.Flag = selectedFlag.Name;
+                }
+                else
+                {
+                    flag = new AiModelFlagDTO() { Flag = selectedFlag.Name, AiModelId = model.Id };
+                    aiModelFlagBinding.Add(flag);
+                }
+                ServiceModel.Instance.SaveAiModelFlag(flag);
+            }
+        }
+
         private void resetModelsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Delete all models configuration?", "Warning", MessageBoxButtons.YesNo) == DialogResult.Yes)
@@ -428,6 +533,22 @@ namespace llama.cpp_models_preset_manager
 
             List<AiModelDTO> models = ModelScanner.ScanAndAddModels(folder);
             models.ForEach(m => aiModelBinding.Add(m));
+        }
+
+        private void flagListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FormCollection fc = Application.OpenForms;
+            foreach (Form f in fc)
+            {
+                if (f is FlagForm)
+                {
+                    f.BringToFront();
+                    return;
+                }
+            }
+
+            FlagForm flagForm = new FlagForm();
+            flagForm.Show();
         }
     }
 }

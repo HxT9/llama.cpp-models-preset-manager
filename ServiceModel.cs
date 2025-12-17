@@ -51,12 +51,12 @@ namespace llama.cpp_models_preset_manager
 
         public List<AiModelDTO> GetAiModels()
         {
-            return _mapper.Map<List<AiModelDTO>>(DatabaseManager.Instance.DbContext.AIModel.AsNoTracking().ToList());
+            return _mapper.Map<List<AiModelDTO>>(DatabaseManager.Instance.DbContext.AIModel.AsNoTracking().OrderBy(m => m.Name).ToList());
         }
 
         public List<FlagDTO> GetFlags()
         {
-            return _mapper.Map<List<FlagDTO>>(DatabaseManager.Instance.DbContext.Flag.AsNoTracking().ToList());
+            return _mapper.Map<List<FlagDTO>>(DatabaseManager.Instance.DbContext.Flag.AsNoTracking().OrderBy(f => f.Name).ToList());
         }
 
         public List<AiModelFlagDTO> GetAiModelFlags(AiModelDTO model)
@@ -64,6 +64,7 @@ namespace llama.cpp_models_preset_manager
             var entities = DatabaseManager.Instance.DbContext.AIModelFlag
                 .AsNoTracking()
                 .Where(f => f.AiModelId == model.Id)
+                .OrderBy(f => f.Flag)
                 .ToList();
 
             return _mapper.Map<List<AiModelFlagDTO>>(entities);
@@ -133,11 +134,23 @@ namespace llama.cpp_models_preset_manager
                 DatabaseManager.Delete(entity);
         }
 
+        public void DeleteAllFlag()
+        {
+            DatabaseManager.Instance.DbContext.Flag.RemoveRange(DatabaseManager.Instance.DbContext.Flag);
+            DatabaseManager.Instance.DbContext.SaveChanges();
+        }
+
         public void DeleteAiModelFlag(AiModelFlagDTO dto)
         {
             var entity = DatabaseManager.Instance.DbContext.AIModelFlag.FirstOrDefault(e => e.Id == dto.Id);
             if (entity != null)
                 DatabaseManager.Delete(entity);
+        }
+
+        public void DeleteAllAiModelFlag(AiModelDTO dto)
+        {
+            DatabaseManager.Instance.DbContext.AIModelFlag.RemoveRange(DatabaseManager.Instance.DbContext.AIModelFlag.Where(f => f.AiModelId == dto.Id));
+            DatabaseManager.Instance.DbContext.SaveChanges();
         }
     }
 }

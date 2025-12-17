@@ -116,6 +116,7 @@
             flagListToolStripMenuItem.Name = "flagListToolStripMenuItem";
             flagListToolStripMenuItem.Size = new Size(59, 20);
             flagListToolStripMenuItem.Text = "Flag list";
+            flagListToolStripMenuItem.Click += flagListToolStripMenuItem_Click;
             // 
             // exportModelspresetConfigToolStripMenuItem
             // 

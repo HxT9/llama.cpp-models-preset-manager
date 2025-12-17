@@ -528,6 +528,8 @@ namespace llama.cpp_models_preset_manager
         {
             if (flagSelectorComboBox.SelectedItem != null && flagSelectorComboBox.Tag is int rowIndex)
             {
+                dataGridViewAiModelFlag.Focus();
+
                 flagSelectorComboBox.Visible = false;
 
                 var selectedFlag = flagSelectorComboBox.SelectedItem as FlagDTO;
@@ -537,17 +539,12 @@ namespace llama.cpp_models_preset_manager
                 var model = dataGridViewAiModel.CurrentRow.DataBoundItem as AiModelDTO;
                 if (model == null) return;
 
-                var flag = dataGridViewAiModelFlag.Rows[rowIndex].DataBoundItem as AiModelFlagDTO;
-                if (flag != null)
-                {
-                    flag.Flag = selectedFlag.Name;
-                }
-                else
-                {
-                    flag = new AiModelFlagDTO() { Flag = selectedFlag.Name, AiModelId = model.Id };
-                    aiModelFlagBinding.Add(flag);
-                }
-                ServiceModel.Instance.SaveAiModelFlag(flag);
+                var cell = dataGridViewAiModelFlag.Rows[rowIndex].Cells["Flag"];
+                dataGridViewAiModelFlag.CurrentCell = cell;
+                dataGridViewAiModelFlag.NotifyCurrentCellDirty(true);
+                cell.Value = selectedFlag.Name;
+                dataGridViewAiModelFlag.EndEdit(DataGridViewDataErrorContexts.Commit);
+                dataGridViewAiModelFlag.NotifyCurrentCellDirty(false);
             }
         }
 

@@ -72,10 +72,13 @@ namespace llama.cpp_models_preset_manager
 
         public string? GetKV(string key)
         {
-            return DatabaseManager.Instance.DbContext.KVConfig.FirstOrDefault(kv => kv.Key == key)?.Value ?? null;
+            string? v = DatabaseManager.Instance.DbContext.KVConfig.FirstOrDefault(kv => kv.Key == key)?.Value;
+            if (string.IsNullOrWhiteSpace(v))
+                return null;
+            return v;
         }
 
-        public void SaveKV(string key, string value)
+        public void SaveKV(string key, string? value)
         {
             if (DatabaseManager.Instance.DbContext.KVConfig.FirstOrDefault(kv => kv.Key == key) != null)
                 DatabaseManager.Instance.DbContext.KVConfig.First(kv => kv.Key == key).Value = value;
@@ -108,6 +111,9 @@ namespace llama.cpp_models_preset_manager
         {
             if (string.IsNullOrWhiteSpace(dto.Flag))
                 throw new ArgumentException("Flag is required");
+
+            if (!ServiceModel.Instance.GetFlags().Any(f => f.Name == dto.Flag))
+                ServiceModel.Instance.SaveFlag(new FlagDTO() { Name = dto.Flag });
 
             var entity = _mapper.Map<AiModelFlag>(dto);
             DatabaseManager.Upsert(entity);

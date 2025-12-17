@@ -10,7 +10,7 @@ using llama.cpp_models_preset_manager;
 namespace llama.cpp_models_preset_manager.Migrations
 {
     [DbContext(typeof(DbContext))]
-    [Migration("20251216163852_Init")]
+    [Migration("20251217091447_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -96,7 +96,6 @@ namespace llama.cpp_models_preset_manager.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Value")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

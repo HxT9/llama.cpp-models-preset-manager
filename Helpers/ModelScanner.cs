@@ -31,12 +31,10 @@ namespace llama.cpp_models_preset_manager.Helpers
             return name;
         }
 
-        public static List<AiModelDTO> ScanAndAddModels(string folder)
+        public static void ScanAndAddModels(string folder)
         {
-            List<AiModelDTO> ret = new List<AiModelDTO>();
-
             if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
-                return ret;
+                return;
 
             var ggufs = Directory.GetFiles(folder, "*.gguf", SearchOption.AllDirectories);
             foreach (var ggufFile in ggufs)
@@ -55,11 +53,7 @@ namespace llama.cpp_models_preset_manager.Helpers
                 AiModelDTO m = new AiModelDTO() { Name = file.FullName, Path = file.FullName };
                 m.Name = getNameFromGGUFPath(file.FullName, folder);
                 ServiceModel.Instance.SaveAiModel(m);
-
-                ret.Add(m);
             }
-
-            return ret;
         }
     }
 }

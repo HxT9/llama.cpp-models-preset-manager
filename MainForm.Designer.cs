@@ -100,14 +100,14 @@
             // lookupFromFolderToolStripMenuItem
             // 
             lookupFromFolderToolStripMenuItem.Name = "lookupFromFolderToolStripMenuItem";
-            lookupFromFolderToolStripMenuItem.Size = new Size(180, 22);
+            lookupFromFolderToolStripMenuItem.Size = new Size(177, 22);
             lookupFromFolderToolStripMenuItem.Text = "Lookup from folder";
             lookupFromFolderToolStripMenuItem.Click += lookupFromFolderToolStripMenuItem_Click;
             // 
             // resetModelsToolStripMenuItem
             // 
             resetModelsToolStripMenuItem.Name = "resetModelsToolStripMenuItem";
-            resetModelsToolStripMenuItem.Size = new Size(180, 22);
+            resetModelsToolStripMenuItem.Size = new Size(177, 22);
             resetModelsToolStripMenuItem.Text = "Reset models";
             resetModelsToolStripMenuItem.Click += resetModelsToolStripMenuItem_Click;
             // 
@@ -123,6 +123,7 @@
             exportModelspresetConfigToolStripMenuItem.Name = "exportModelspresetConfigToolStripMenuItem";
             exportModelspresetConfigToolStripMenuItem.Size = new Size(169, 20);
             exportModelspresetConfigToolStripMenuItem.Text = "Export models-preset config";
+            exportModelspresetConfigToolStripMenuItem.Click += exportModelspresetConfigToolStripMenuItem_Click;
             // 
             // MainForm
             // 

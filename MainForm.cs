@@ -2,6 +2,7 @@
 using llama.cpp_models_preset_manager.Helpers;
 using llama.cpp_models_preset_manager.Models;
 using System.ComponentModel;
+using System.Windows.Forms;
 
 namespace llama.cpp_models_preset_manager
 {
@@ -39,6 +40,7 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModel.CellClick += DataGridViewAiModel_CellClick;
             dataGridViewAiModel.CellMouseDown += DataGridViewAiModel_CellMouseDown;
             dataGridViewAiModel.RowValidated += DataGridViewAiModel_RowValidated;
+            dataGridViewAiModel.KeyUp += DataGridViewAiModel_KeyUp;
 
             {
                 contextMenuStripAiModel = new ContextMenuStrip();
@@ -134,7 +136,8 @@ namespace llama.cpp_models_preset_manager
                     {
                         ServiceModel.Instance.SaveAiModel(m);
                         dataGridViewAiModelFlag.AllowUserToAddRows = true;
-                    }catch(Exception ex)
+                    }
+                    catch (Exception ex)
                     {
                         MessageBox.Show(ex.Message + "\n" + ex.InnerException);
                         ServiceModel.Instance.UndoChanges();
@@ -145,6 +148,19 @@ namespace llama.cpp_models_preset_manager
                 {
                     MessageBox.Show(ex.Message + "\n" + ex.InnerException);
                 }
+        }
+
+        private void DataGridViewAiModel_KeyUp(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Tab)
+            {
+                if (dataGridViewAiModel.CurrentCell != null)
+                {
+                    if (dataGridViewAiModel.CurrentCell.ColumnIndex == dataGridViewAiModel.Columns["Browse"].Index)
+                        dataGridViewAiModel.CurrentCell = dataGridViewAiModel.Rows[dataGridViewAiModel.CurrentCell.RowIndex].Cells["Name"];
+                    e.Handled = true;
+                }
+            }
         }
 
         private void ContextAiModelDelete(object? sender, EventArgs e)
@@ -234,6 +250,7 @@ namespace llama.cpp_models_preset_manager
             dataGridViewAiModelFlag.CellClick += DataGridViewAiModelFlag_CellClick;
             dataGridViewAiModelFlag.CellMouseDown += DataGridViewAiModelFlag_CellMouseDown;
             dataGridViewAiModelFlag.RowValidated += DataGridViewAiModelFlag_RowValidated;
+            dataGridViewAiModelFlag.KeyUp += DataGridViewAiModelFlag_KeyUp;
 
             {
                 contextMenuStripAiModelFlag = new ContextMenuStrip();
@@ -353,6 +370,21 @@ namespace llama.cpp_models_preset_manager
             }
         }
 
+        private void DataGridViewAiModelFlag_KeyUp(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Tab)
+            {
+                if (dataGridViewAiModelFlag.CurrentCell != null)
+                {
+                    if (dataGridViewAiModelFlag.CurrentCell.ColumnIndex == dataGridViewAiModelFlag.Columns["FlagDropDown"].Index)
+                        dataGridViewAiModelFlag.CurrentCell = dataGridViewAiModelFlag.Rows[dataGridViewAiModelFlag.CurrentCell.RowIndex].Cells["FlagValue"];
+                    if (dataGridViewAiModelFlag.CurrentCell.ColumnIndex == dataGridViewAiModelFlag.Columns["Browse"].Index)
+                        dataGridViewAiModelFlag.CurrentCell = dataGridViewAiModelFlag.Rows[dataGridViewAiModelFlag.CurrentCell.RowIndex].Cells["Flag"];
+                    e.Handled = true;
+                }
+            }
+        }
+
         private void ContextAiModelFlagDelete(object? sender, EventArgs e)
         {
             if (dataGridViewAiModelFlag.CurrentRow != null)
@@ -426,7 +458,8 @@ namespace llama.cpp_models_preset_manager
                 HeaderText = "",
                 Text = "•",
                 UseColumnTextForButtonValue = true,
-                Width = 20
+                Width = 20,
+                ReadOnly = true
             };
             dataGridViewAiModelFlag.Columns.Add(flagDropDown);
 
@@ -452,7 +485,8 @@ namespace llama.cpp_models_preset_manager
                 HeaderText = "",
                 Text = "…",
                 UseColumnTextForButtonValue = true,
-                Width = 30
+                Width = 30,
+                ReadOnly = true
             };
             dataGridViewAiModelFlag.Columns.Add(browseColumn);
 
@@ -531,8 +565,8 @@ namespace llama.cpp_models_preset_manager
             if (string.IsNullOrWhiteSpace(folder))
                 return;
 
-            List<AiModelDTO> models = ModelScanner.ScanAndAddModels(folder);
-            models.ForEach(m => aiModelBinding.Add(m));
+            ModelScanner.ScanAndAddModels(folder);
+            LoadAiModels();
         }
 
         private void flagListToolStripMenuItem_Click(object sender, EventArgs e)
@@ -549,6 +583,27 @@ namespace llama.cpp_models_preset_manager
 
             FlagForm flagForm = new FlagForm();
             flagForm.Show();
+        }
+
+        private void exportModelspresetConfigToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string? file = null;
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Filter = "Config file (*.ini)|*.ini|All files (*.*)|*.*";
+                dialog.InitialDirectory = ServiceModel.Instance.GetKV("ConfigFile") ?? Environment.CurrentDirectory;
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    file = dialog.FileName;
+                    ServiceModel.Instance.SaveKV("ConfigFile", new FileInfo(file).Directory?.FullName ?? "");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(file))
+                return;
+
+            ConfigExporter.Export(file);
         }
     }
 }
